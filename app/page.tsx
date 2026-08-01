@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
+import { activate14DayTrial } from "@/lib/storage";
 import {
   ArrowRight,
   TrendingDown,
@@ -540,7 +541,7 @@ export default function HomePage() {
           </p>
 
           <div className="animate-fade-in-up delay-300 mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/dashboard">
+            <Link href="/dashboard" onClick={() => activate14DayTrial()}>
               <Button size="lg" className="group w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 text-base font-bold shadow-xl shadow-blue-600/25 gap-2 hover:scale-105 transition-all duration-300 animate-pulse-glow">
                 Start Free Audit
                 <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />

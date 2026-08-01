@@ -33,9 +33,11 @@ import {
   BellRing,
   CheckCircle2,
   RefreshCw,
-  PlusCircle
+  PlusCircle,
+  Lock,
+  ArrowRight
 } from "lucide-react";
-import { getStoredSubscriptions, saveStoredSubscriptions, deleteStoredSubscription, isDemoMode, setDemoMode, fetchLiveDatabaseSubscriptions } from "@/lib/storage";
+import { getStoredSubscriptions, saveStoredSubscriptions, deleteStoredSubscription, isDemoMode, setDemoMode, fetchLiveDatabaseSubscriptions, getUserPlanInfo } from "@/lib/storage";
 
 export default function DashboardPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
@@ -204,6 +206,48 @@ export default function DashboardPage() {
       <Header />
 
       <main className="container mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+        {/* Live Plan & 14-Day Free Trial Banner */}
+        {mounted && (() => {
+          const planInfo = getUserPlanInfo();
+          if (planInfo.isTrial) {
+            return (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-xs text-emerald-700 dark:text-emerald-300">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-500 shrink-0" />
+                  <span>
+                    <strong>14-Day Growth Pro Trial Active:</strong> You have <strong>{planInfo.daysRemaining} days remaining</strong> with full unlimited access (No credit card needed).
+                  </span>
+                </div>
+                <Link href="/pricing">
+                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shrink-0 gap-1">
+                    <span>Lock In Plan Discount</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            );
+          } else if (!planInfo.isPaid && subscriptions.length >= 5) {
+            return (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-800 dark:text-amber-300">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-amber-500 shrink-0" />
+                  <span>
+                    <strong>Free Starter Plan Limit (5 Tools):</strong> You have tracked {subscriptions.length} tools. Upgrade to Growth Pro to track unlimited software & get AI renewal alerts.
+                  </span>
+                </div>
+                <Link href="/pricing">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 gap-1">
+                    <span>Upgrade to Growth Pro</span>
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {/* Demo Mode vs Real Account Mode Banner */}
         {inDemo ? (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs text-amber-200">

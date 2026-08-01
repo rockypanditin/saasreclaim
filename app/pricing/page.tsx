@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { formatCurrency } from "@/lib/utils";
+import { getUserPlanInfo, activate14DayTrial } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -17,7 +18,8 @@ import {
   HelpCircle,
   CreditCard,
   X,
-  Lock
+  Lock,
+  UserCheck,
 } from "lucide-react";
 
 declare global {
@@ -30,15 +32,21 @@ export default function PricingPage() {
   const [annualBilling, setAnnualBilling] = useState(true);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [currency, setCurrency] = useState("USD");
-  const [activePlan, setActivePlan] = useState("Growth Plan");
+  const [activePlan, setActivePlan] = useState("Growth Pro (14-Day Free Trial)");
+  const [trialNotice, setTrialNotice] = useState(false);
 
   useEffect(() => {
     setCurrency(localStorage.getItem("currency") || "USD");
-    const savedPlan = localStorage.getItem("saasreclaim_plan") || "Growth Plan";
-    setActivePlan(savedPlan);
+
+    const updateCurrentPlan = () => {
+      const planInfo = getUserPlanInfo();
+      setActivePlan(planInfo.planName);
+    };
+
+    updateCurrentPlan();
 
     const handleCurrency = () => setCurrency(localStorage.getItem("currency") || "USD");
-    const handlePlan = () => setActivePlan(localStorage.getItem("saasreclaim_plan") || "Growth Plan");
+    const handlePlan = () => updateCurrentPlan();
 
     window.addEventListener("currencyChange", handleCurrency);
     window.addEventListener("planChange", handlePlan);
@@ -55,6 +63,16 @@ export default function PricingPage() {
     };
   }, []);
 
+  /* ══ 14-DAY FREE TRIAL ACTIVATION (NO CREDIT CARD NEEDED) ══ */
+  const handleStartFreeTrial = () => {
+    activate14DayTrial();
+    setTrialNotice(true);
+    setTimeout(() => {
+      window.location.href = "/dashboard";
+    }, 1200);
+  };
+
+  /* ══ RAZORPAY PAID CHECKOUT ══ */
   const handleCheckout = async (planName: string, monthlyPrice: number) => {
     setCheckoutSuccess(false);
     const finalAmountToCharge = annualBilling ? monthlyPrice * 12 : monthlyPrice;
@@ -86,40 +104,18 @@ export default function PricingPage() {
             setCheckoutSuccess(true);
             const savedPlanTitle = `${planName} ${annualBilling ? "(Annual)" : "(Monthly)"}`;
             localStorage.setItem("saasreclaim_plan", savedPlanTitle);
+            localStorage.removeItem("saasreclaim_trial_start");
             setActivePlan(savedPlanTitle);
             window.dispatchEvent(new Event("planChange"));
-            setTimeout(() => setCheckoutSuccess(false), 5000);
+            setTimeout(() => {
+              setCheckoutSuccess(false);
+              window.location.href = "/dashboard";
+            }, 2000);
           },
           prefill: {
             name: localStorage.getItem("saasreclaim_user_fullname") || "Alex Morgan",
             email: localStorage.getItem("saasreclaim_user_email") || "alex@acmecorp.com",
             contact: "9876543210",
-          },
-          config: {
-            display: {
-              blocks: {
-                cards: {
-                  name: "Global & Domestic Cards (Credit / Debit / International)",
-                  instruments: [{ method: "card" }],
-                },
-                upi: {
-                  name: "UPI / Google Pay / PhonePe / Paytm / BHIM",
-                  instruments: [{ method: "upi" }],
-                },
-                banks: {
-                  name: "Netbanking (All 50+ Indian & Global Banks)",
-                  instruments: [{ method: "netbanking" }],
-                },
-                wallets: {
-                  name: "Wallets & Pay Later",
-                  instruments: [{ method: "wallet" }, { method: "paylater" }],
-                },
-              },
-              sequence: ["block.cards", "block.upi", "block.banks", "block.wallets"],
-              preferences: {
-                show_default_blocks: true,
-              },
-            },
           },
           theme: {
             color: "#2563eb",
@@ -129,7 +125,7 @@ export default function PricingPage() {
         rzp.open();
       }
     } catch {
-      // Clean error handling
+      // Clean fallback
     }
   };
 
@@ -137,9 +133,10 @@ export default function PricingPage() {
     {
       id: "starter",
       name: "Starter Audit",
+      icon: UserCheck,
       priceMonthly: 29,
       priceAnnual: 24,
-      description: "Ideal for early-stage startups and small teams looking to clean up software spend.",
+      description: "Ideal for early-stage startups & small teams auditing SaaS for the first time.",
       features: [
         "Track up to 25 software tools",
         "AI Invoice & CSV drag-and-drop parser",
@@ -148,12 +145,14 @@ export default function PricingPage() {
         "Export CSV & Executive PDF reports",
       ],
       cta: "Start 14-Day Free Trial",
+      isTrialBtn: true,
       popular: false,
-      badge: "Starter",
+      badge: "No Card Required",
     },
     {
       id: "growth",
       name: "Growth Plan",
+      icon: Zap,
       priceMonthly: 79,
       priceAnnual: 65,
       description: "Best for growing teams (15-100 employees) needing department controls & seat sharing.",
@@ -166,12 +165,14 @@ export default function PricingPage() {
         "Priority 24/7 Customer Support",
       ],
       cta: "Upgrade to Growth",
+      isTrialBtn: false,
       popular: true,
       badge: "Most Popular — Save 20%",
     },
     {
       id: "enterprise",
       name: "Enterprise Pro",
+      icon: Building2,
       priceMonthly: 199,
       priceAnnual: 159,
       description: "For larger organizations requiring vendor negotiations, custom API access & SSO.",
@@ -183,30 +184,29 @@ export default function PricingPage() {
         "Custom REST API access & webhooks",
         "SLA & Dedicated Account Manager",
       ],
-      cta: "Contact Sales / Upgrade",
+      cta: "Upgrade to Enterprise Pro",
+      isTrialBtn: false,
       popular: false,
-      badge: "Enterprise",
+      badge: "Enterprise Scale",
     },
   ];
 
-
-
   const faqs = [
+    {
+      q: "Do I need a credit card to start the 14-Day Free Trial?",
+      a: "No credit card required! You get instant 14-day access to all Growth Pro features (594+ SaaS database, AI parsing, PDF reports) completely free.",
+    },
+    {
+      q: "What happens after the 14-day trial ends?",
+      a: "If you choose not to upgrade, your account automatically downgrades to the Free Starter plan (limited to 5 tools max). Your data is never deleted.",
+    },
     {
       q: "How fast will SaaSReclaim find savings for my company?",
       a: "Most teams uncover redundant tools or unassigned seats during their very first 3-minute CSV scan, saving an average of $450-$1,000 in their first month.",
     },
     {
-      q: "Do I need to connect my company bank accounts?",
-      a: "No! SaaSReclaim uses zero-bank-connection manual CSV uploads or AI receipt drag-and-drop to protect your financial credentials 100%.",
-    },
-    {
       q: "Can I switch or cancel my plan at any time?",
-      a: "Yes, you can upgrade, downgrade, or cancel your subscription at any time with 1-click inside your billing portal. No hidden cancellation fees.",
-    },
-    {
-      q: "Do you support multiple currencies?",
-      a: "Yes! SaaSReclaim supports USD ($), EUR (€), GBP (£), and global currency switching across all your metrics.",
+      a: "Yes, you can upgrade, downgrade, or cancel your subscription at any time with 1-click inside your billing portal with zero cancellation fees.",
     },
   ];
 
@@ -214,38 +214,63 @@ export default function PricingPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
       <Header />
 
+      {/* Trial Activation Banner Toast */}
+      {trialNotice && (
+        <div className="fixed top-20 right-5 z-50 animate-bounce-soft rounded-2xl bg-blue-600 text-white px-6 py-4 shadow-2xl flex items-center gap-3 border border-blue-400">
+          <CheckCircle2 className="h-6 w-6" />
+          <div>
+            <h4 className="font-extrabold text-sm">14-Day Free Trial Activated!</h4>
+            <p className="text-xs opacity-90">No credit card needed. Opening your dashboard...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Success Toast */}
+      {checkoutSuccess && (
+        <div className="fixed top-20 right-5 z-50 animate-bounce-soft rounded-2xl bg-emerald-600 text-white px-6 py-4 shadow-2xl flex items-center gap-3 border border-emerald-400">
+          <CheckCircle2 className="h-6 w-6" />
+          <div>
+            <h4 className="font-extrabold text-sm">Payment Successful!</h4>
+            <p className="text-xs opacity-90">Your plan has been upgraded! Redirecting to dashboard...</p>
+          </div>
+        </div>
+      )}
+
       <main className="container mx-auto px-4 sm:px-6 py-12">
         {/* Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-12">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20">
-            <Zap className="h-3.5 w-3.5 text-amber-500" />
-            <span>Guaranteed 10x ROI on Your Plan</span>
+            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+            <span>14-Day Free Trial · No Credit Card Required</span>
           </div>
+
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight sm:text-5xl">
-            Simple, Transparent Pricing. <br />
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-teal-400 bg-clip-text text-transparent">
-              Pays For Itself in Days.
-            </span>
+            Simple, Transparent <span className="text-blue-600 dark:text-blue-400">SaaS Reclaim</span> Pricing
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl mx-auto">
-            Choose a plan to eliminate software budget waste, automate renewal warnings, and manage team seat licenses.
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto">
+            Audit your stack for free. Upgrade to automate renewal alerts, team seats, and executive PDF reports.
           </p>
 
-          {/* Monthly / Annual Billing Toggle */}
+          {/* Billing Cycle Selector */}
           <div className="pt-4 flex items-center justify-center gap-3">
             <span className={`text-xs font-bold ${!annualBilling ? "text-slate-900 dark:text-white" : "text-slate-400"}`}>
               Monthly Billing
             </span>
+
             <button
               onClick={() => setAnnualBilling(!annualBilling)}
-              className="relative inline-flex h-6 w-11 items-center rounded-full bg-blue-600 transition-colors"
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                annualBilling ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-700"
+              }`}
+              aria-label="Toggle Annual Billing"
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  annualBilling ? "translate-x-6" : "translate-x-1"
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                  annualBilling ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>
+
             <span className={`text-xs font-bold flex items-center gap-1.5 ${annualBilling ? "text-slate-900 dark:text-white" : "text-slate-400"}`}>
               <span>Annual Billing</span>
               <span className="rounded-full bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300">
@@ -317,20 +342,30 @@ export default function PricingPage() {
                     ))}
                   </ul>
 
-                  <Button
-                    disabled={isCurrentPlan}
-                    onClick={() => !isCurrentPlan && handleCheckout(plan.name, price)}
-                    className={`w-full font-bold py-3 text-xs rounded-xl gap-2 ${
-                      isCurrentPlan
-                        ? "bg-emerald-600 text-white font-black cursor-default shadow-md opacity-100"
-                        : plan.popular
-                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30"
-                        : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    <span>{isCurrentPlan ? "✓ Current Active Plan" : `Upgrade to ${plan.name}`}</span>
-                    {!isCurrentPlan && <ArrowRight className="h-4 w-4" />}
-                  </Button>
+                  {plan.isTrialBtn ? (
+                    <Button
+                      onClick={handleStartFreeTrial}
+                      className="w-full font-extrabold py-3 text-xs rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30 cursor-pointer"
+                    >
+                      <span>{plan.cta} (No Card Needed)</span>
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      disabled={isCurrentPlan}
+                      onClick={() => !isCurrentPlan && handleCheckout(plan.name, price)}
+                      className={`w-full font-bold py-3 text-xs rounded-xl gap-2 cursor-pointer ${
+                        isCurrentPlan
+                          ? "bg-emerald-600 text-white font-black cursor-default shadow-md opacity-100"
+                          : plan.popular
+                          ? "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/30"
+                          : "bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      <span>{isCurrentPlan ? "✓ Current Active Plan" : `Upgrade to ${plan.name}`}</span>
+                      {!isCurrentPlan && <CreditCard className="h-4 w-4 ml-1" />}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -348,15 +383,16 @@ export default function PricingPage() {
             {faqs.map((faq, idx) => (
               <div key={idx} className="space-y-1">
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <HelpCircle className="h-4 w-4 text-blue-600 shrink-0" />
+                  <HelpCircle className="h-4 w-4 text-blue-500 shrink-0" />
                   <span>{faq.q}</span>
                 </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-6">{faq.a}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 pl-6 leading-relaxed">{faq.a}</p>
               </div>
             ))}
           </div>
         </div>
       </main>
+
       <Footer />
     </div>
   );

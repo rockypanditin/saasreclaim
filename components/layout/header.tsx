@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import { getUserPlanInfo } from "@/lib/storage";
 import { CURRENCY_MAP } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,13 +52,19 @@ export function Header() {
 
     // Check saved currency preference & active plan
     const savedCurrency = localStorage.getItem("currency") || "USD";
-    const savedPlan = localStorage.getItem("saasreclaim_plan") || "Growth Plan";
     setCurrency(savedCurrency);
-    setActivePlan(savedPlan);
 
-    const handlePlanChange = () => {
-      setActivePlan(localStorage.getItem("saasreclaim_plan") || "Growth Plan");
+    const updatePlan = () => {
+      const planInfo = getUserPlanInfo();
+      if (planInfo.isTrial) {
+        setActivePlan(`14-Day Trial (${planInfo.daysRemaining}d Left)`);
+      } else {
+        setActivePlan(planInfo.planName);
+      }
     };
+
+    updatePlan();
+    const handlePlanChange = () => updatePlan();
 
     window.addEventListener("planChange", handlePlanChange);
     return () => window.removeEventListener("planChange", handlePlanChange);

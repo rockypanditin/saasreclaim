@@ -4,6 +4,8 @@ import { INITIAL_DEMO_SUBSCRIPTIONS } from "@/lib/subscription-utils";
 const DEMO_KEY = "saasreclaim_demo_subscriptions";
 const USER_KEY = "saasreclaim_user_subscriptions";
 const MODE_KEY = "saasreclaim_is_demo_mode";
+const PLAN_KEY = "saasreclaim_plan";
+const TRIAL_START_KEY = "saasreclaim_trial_start";
 
 export function isDemoMode(): boolean {
   if (typeof window === "undefined") return false;
@@ -99,5 +101,111 @@ export async function fetchLiveDatabaseSubscriptions(): Promise<Subscription[]> 
       return data.subscriptions;
     }
   } catch {}
-  return getStoredSubscriptions();
+  return [];
+}
+
+/* ════════════════════════════════════════════════════════════════ */
+/* 🌟 USER PLAN & 14-DAY FREE TRIAL MANAGER                         */
+/* ════════════════════════════════════════════════════════════════ */
+
+export interface UserPlanInfo {
+  planName: string;
+  isTrial: boolean;
+  daysRemaining: number;
+  isPaid: boolean;
+  maxToolsAllowed: number;
+  canExportPdf: boolean;
+  canUseAiParse: boolean;
+}
+
+export function getUserPlanInfo(): UserPlanInfo {
+  if (typeof window === "undefined") {
+    return {
+      planName: "Growth Pro (14-Day Trial)",
+      isTrial: true,
+      daysRemaining: 14,
+      isPaid: false,
+      maxToolsAllowed: 9999,
+      canExportPdf: true,
+      canUseAiParse: true,
+    };
+  }
+
+  const rawPlan = localStorage.getItem(PLAN_KEY);
+  const trialStart = localStorage.getItem(TRIAL_START_KEY);
+
+  // If no plan set yet, default to 14-Day Free Trial of Growth Pro (NO credit card needed)
+  if (!rawPlan) {
+    const now = Date.now();
+    localStorage.setItem(PLAN_KEY, "Growth Pro (14-Day Free Trial)");
+    localStorage.setItem(TRIAL_START_KEY, String(now));
+    return {
+      planName: "Growth Pro (14-Day Free Trial)",
+      isTrial: true,
+      daysRemaining: 14,
+      isPaid: false,
+      maxToolsAllowed: 9999,
+      canExportPdf: true,
+      canUseAiParse: true,
+    };
+  }
+
+  if (rawPlan.includes("Trial") || trialStart) {
+    const startTime = Number(trialStart) || Date.now();
+    const elapsedDays = Math.floor((Date.now() - startTime) / (1000 * 60 * 60 * 24));
+    const daysLeft = Math.max(0, 14 - elapsedDays);
+
+    if (daysLeft === 0) {
+      // Trial expired -> downgrade to Free Starter (5 tools max)
+      return {
+        planName: "Free Starter (Trial Expired)",
+        isTrial: false,
+        daysRemaining: 0,
+        isPaid: false,
+        maxToolsAllowed: 5,
+        canExportPdf: false,
+        canUseAiParse: false,
+      };
+    }
+
+    return {
+      planName: "Growth Pro (14-Day Free Trial)",
+      isTrial: true,
+      daysRemaining: daysLeft,
+      isPaid: false,
+      maxToolsAllowed: 9999,
+      canExportPdf: true,
+      canUseAiParse: true,
+    };
+  }
+
+  if (rawPlan.includes("Growth") || rawPlan.includes("Enterprise") || rawPlan.includes("Annual") || rawPlan.includes("Monthly") || rawPlan.includes("Paid")) {
+    return {
+      planName: rawPlan,
+      isTrial: false,
+      daysRemaining: 365,
+      isPaid: true,
+      maxToolsAllowed: 9999,
+      canExportPdf: true,
+      canUseAiParse: true,
+    };
+  }
+
+  // Free Starter
+  return {
+    planName: "Free Starter",
+    isTrial: false,
+    daysRemaining: 0,
+    isPaid: false,
+    maxToolsAllowed: 5,
+    canExportPdf: false,
+    canUseAiParse: false,
+  };
+}
+
+export function activate14DayTrial(): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PLAN_KEY, "Growth Pro (14-Day Free Trial)");
+  localStorage.setItem(TRIAL_START_KEY, String(Date.now()));
+  window.dispatchEvent(new Event("planChange"));
 }

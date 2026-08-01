@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
-import { setDemoMode, clearUserWorkspace } from "@/lib/storage";
+import { setDemoMode, clearUserWorkspace, activate14DayTrial } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ShieldAlert, CheckCircle } from "lucide-react";
@@ -49,6 +49,7 @@ export default function SignupPage() {
         localStorage.setItem("saasreclaim_user_email", email);
         localStorage.setItem("saasreclaim_user_fullname", fullName);
         localStorage.setItem("saasreclaim_user_company", companyName);
+        activate14DayTrial();
         router.push("/dashboard");
         router.refresh();
       }
@@ -61,6 +62,7 @@ export default function SignupPage() {
 
   const handleDemoAccess = () => {
     setDemoMode(true);
+    activate14DayTrial();
     router.push("/dashboard");
   };
 
@@ -69,13 +71,11 @@ export default function SignupPage() {
       <div className="w-full max-w-md space-y-8 rounded-3xl border border-slate-800 bg-slate-950/80 p-8 shadow-2xl backdrop-blur-xl">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg">
-              <ShieldAlert className="h-5 w-5" />
-            </div>
+            <img src="/logo.png" alt="SaaSReclaim Logo" className="h-10 w-10 rounded-xl object-cover shadow-lg border border-blue-500/30" />
             <span className="text-xl font-bold text-white tracking-tight">SaaSReclaim</span>
           </Link>
-          <h2 className="text-2xl font-extrabold text-white">Create Account</h2>
-          <p className="mt-2 text-xs text-slate-400">Start auditing subscriptions and saving money</p>
+          <h2 className="text-2xl font-extrabold text-white">Start 14-Day Free Trial</h2>
+          <p className="mt-2 text-xs text-slate-400">No Credit Card Required · Full Growth Pro Access</p>
         </div>
 
         <form onSubmit={handleSignup} className="mt-6 space-y-4">
