@@ -84,9 +84,11 @@ export default function ReportsPage() {
           <div className="flex justify-between items-start border-b border-slate-200 dark:border-slate-800 pb-6 mb-8">
             <div>
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-black text-sm">
-                  WD
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="SaaSReclaim Logo"
+                  className="h-8 w-8 rounded-lg object-cover shadow-sm border border-blue-500/20"
+                />
                 <span className="text-xl font-extrabold text-slate-900 dark:text-white">SaaSReclaim Audit</span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Generated: {formatDate(new Date().toISOString())}</p>
